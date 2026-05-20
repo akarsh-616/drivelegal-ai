@@ -1,307 +1,228 @@
 from flask import Flask, render_template, request, jsonify
-from rapidfuzz import fuzz
-from googletrans import Translator
-import google.generativeai as genai
-import pytesseract
-from PIL import Image
-import speech_recognition as sr
-import requests
-import json
 import os
 import re
-import spacy
-
+import pytesseract
+from PIL import Image
+from werkzeug.utils import secure_filename
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-# =====================================================
+# =========================================================
 # FLASK APP
-# =====================================================
+# =========================================================
 
 app = Flask(__name__)
 
-# =====================================================
-# GEMINI AI SETUP
-# =====================================================
+# =========================================================
+# UPLOAD FOLDER
+# =========================================================
 
-# Replace with your Gemini API Key
-GEMINI_API_KEY = "YOUR_GEMINI_API_KEY"
+UPLOAD_FOLDER = "uploads"
 
-genai.configure(api_key=GEMINI_API_KEY)
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
 
-model = genai.GenerativeModel("gemini-1.5-flash")
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
-# =====================================================
-# TESSERACT OCR PATH
-# =====================================================
+# =========================================================
+# TESSERACT PATH
+# =========================================================
 
-pytesseract.pytesseract.tesseract_cmd = (
-    r"C:\Program Files\Tesseract-OCR\tesseract.exe"
-)
+pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
-# =====================================================
-# SPACY NLP MODEL
-# =====================================================
+# =========================================================
+# LEGAL DATASET
+# =========================================================
 
-nlp = spacy.load("en_core_web_sm")
+legal_questions = [
+    "what is fir",
+    "how to file fir",
+    "what is cyber crime",
+    "what is ipc section 420",
+    "women safety laws",
+    "traffic challan rules",
+    "consumer court",
+    "online fraud",
+    "divorce law",
+    "property dispute",
+    "cyber bullying",
+    "helmet challan",
+    "police complaint",
+    "loan fraud",
+    "domestic violence"
+]
 
-# =====================================================
-# TRANSLATOR
-# =====================================================
+legal_answers = [
+    "FIR means First Information Report. It is registered by police for a cognizable offence.",
 
-translator = Translator()
+    "You can file FIR by visiting nearest police station or using your state police online portal.",
 
-# =====================================================
-# BASE DIRECTORY
-# =====================================================
+    "Cyber crime includes hacking, online scams, phishing, identity theft and cyber bullying.",
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    "IPC Section 420 relates to cheating and dishonestly inducing delivery of property.",
 
-# =====================================================
-# LOAD RULES
-# =====================================================
+    "Women safety laws include Domestic Violence Act, POSH Act and IPC protections.",
 
-RULES_PATH = os.path.join(BASE_DIR, "rules.json")
+    "Traffic challan penalties apply for no helmet, no seatbelt, overspeeding and signal jumping.",
 
-with open(RULES_PATH, "r", encoding="utf-8") as f:
+    "Consumer court helps consumers resolve disputes against defective products or poor services.",
 
-    rules = json.load(f)
+    "Online fraud can be reported at cybercrime.gov.in or nearest cyber police station.",
 
-# =====================================================
-# TRAINING DATASET
-# =====================================================
+    "Divorce laws in India depend on religion and personal laws under Indian legal system.",
 
-training_sentences = {
+    "Property disputes can be resolved through civil court or mutual settlement.",
 
-    "helmet": [
+    "Cyber bullying is harassment using internet platforms, social media or messaging apps.",
 
-        "no helmet",
-        "helmet nahi pehna",
-        "forgot helmet",
-        "without helmet",
-        "bina helmet",
-        "helmet missing",
-        "helmet bhool gaya"
-    ],
+    "Helmet challan is issued if rider or passenger is not wearing helmet while driving.",
 
-    "signal_jump": [
+    "Police complaint can be filed at nearest police station or online grievance portal.",
 
-        "jumped red light",
-        "signal break",
-        "signal tod diya",
-        "crossed red signal",
-        "red light jump",
-        "traffic signal break"
-    ],
+    "Loan fraud includes fake loan apps, phishing links and illegal recovery threats.",
 
-    "drunk_driving": [
+    "Domestic violence includes physical, emotional, verbal and financial abuse."
+]
 
-        "drink and drive",
-        "drunk driving",
-        "alcohol driving",
-        "pee kar gaadi chalana",
-        "drunk drive"
-    ],
+# =========================================================
+# NLP MODEL
+# =========================================================
 
-    "license": [
+vectorizer = TfidfVectorizer()
 
-        "without license",
-        "license nahi hai",
-        "forgot driving license",
-        "no license"
-    ],
+X = vectorizer.fit_transform(legal_questions)
 
-    "triple_riding": [
+# =========================================================
+# STATES & CITIES
+# =========================================================
 
-        "3 people on bike",
-        "three riding",
-        "triple riding"
-    ]
-}
+states = [
+    "uttar pradesh",
+    "maharashtra",
+    "delhi",
+    "bihar",
+    "gujarat",
+    "rajasthan",
+    "west bengal",
+    "madhya pradesh",
+    "tamil nadu",
+    "karnataka"
+]
 
-# =====================================================
-# CLEAN TEXT
-# =====================================================
+cities = [
+    "varanasi",
+    "lucknow",
+    "mumbai",
+    "surat",
+    "patna",
+    "jaipur",
+    "kolkata",
+    "bhopal",
+    "chennai",
+    "bangalore",
+    "delhi"
+]
 
-def clean_text(text):
-
-    # remove emojis
-    text = re.sub(r'[^\w\s]', ' ', text)
-
-    # lowercase
-    text = text.lower()
-
-    # remove extra spaces
-    text = " ".join(text.split())
-
-    return text
-
-# =====================================================
-# TRANSLATE TO ENGLISH
-# =====================================================
-
-def translate_to_english(text):
-
-    try:
-
-        translated = translator.translate(
-            text,
-            dest='en'
-        )
-
-        return translated.text.lower()
-
-    except:
-
-        return text.lower()
-
-# =====================================================
-# NLP INTENT DETECTION
-# =====================================================
-
-def detect_intent(user_text):
-
-    best_intent = None
-
-    best_score = 0
-
-    for intent, examples in training_sentences.items():
-
-        for example in examples:
-
-            vectorizer = TfidfVectorizer()
-
-            vectors = vectorizer.fit_transform(
-                [user_text, example]
-            )
-
-            similarity = cosine_similarity(
-                vectors[0:1],
-                vectors[1:2]
-            )[0][0]
-
-            if similarity > best_score:
-
-                best_score = similarity
-
-                best_intent = intent
-
-    if best_score > 0.3:
-
-        return best_intent
-
-    return None
-
-# =====================================================
-# HOME ROUTE
-# =====================================================
+# =========================================================
+# HOME PAGE
+# =========================================================
 
 @app.route("/")
 def home():
-
     return render_template("index.html")
 
-# =====================================================
+# =========================================================
 # CHATBOT ROUTE
-# =====================================================
+# =========================================================
 
 @app.route("/chat", methods=["POST"])
 def chat():
 
-    data = request.json
-
-    message = data.get("message", "")
-
-    # clean text
-    message = clean_text(message)
-
-    # translate to english
-    message = translate_to_english(message)
-
-    # NLP intent detection
-    matched_rule = detect_intent(message)
-
-    # =================================================
-    # LOCAL RULE ENGINE
-    # =================================================
-
-    if matched_rule:
-
-        fine = rules.get(matched_rule, 1000)
-
-        reply = f"""
-🚨 Violation Detected
-
-📌 Violation:
-{matched_rule.replace('_', ' ').title()}
-
-💰 Estimated Fine:
-₹{fine}
-
-⚖️ Please follow traffic rules carefully.
-"""
-
-        return jsonify({
-            "reply": reply
-        })
-
-    # =================================================
-    # GEMINI AI FALLBACK
-    # =================================================
-
     try:
 
-        prompt = f"""
-You are DriveLegal AI.
+        data = request.get_json()
 
-Answer traffic law questions simply.
+        user_message = data.get("message", "").lower()
 
-User Question:
-{message}
-"""
+        # =====================================================
+        # REMOVE EMOJIS
+        # =====================================================
 
-        response = model.generate_content(prompt)
+        user_message = re.sub(r'[^\w\s]', '', user_message)
+
+        # =====================================================
+        # NLP RESPONSE
+        # =====================================================
+
+        user_vector = vectorizer.transform([user_message])
+
+        similarity = cosine_similarity(user_vector, X)
+
+        best_match = similarity.argmax()
+
+        response = legal_answers[best_match]
+
+        # =====================================================
+        # LOCATION DETECTION
+        # =====================================================
+
+        detected_state = None
+        detected_city = None
+
+        for state in states:
+            if state in user_message:
+                detected_state = state.title()
+
+        for city in cities:
+            if city in user_message:
+                detected_city = city.title()
+
+        # =====================================================
+        # FINAL RESPONSE
+        # =====================================================
 
         return jsonify({
-            "reply": response.text
+            "reply": response,
+            "state": detected_state,
+            "city": detected_city
         })
 
     except Exception as e:
 
         return jsonify({
-            "reply": f"AI Error: {str(e)}"
+            "reply": f"Error: {str(e)}"
         })
 
-# =====================================================
-# OCR IMAGE READER
-# =====================================================
+# =========================================================
+# OCR ROUTE
+# =========================================================
 
 @app.route("/ocr", methods=["POST"])
 def ocr():
 
     try:
 
-        image = request.files["image"]
+        if "image" not in request.files:
+            return jsonify({
+                "text": "No image uploaded"
+            })
 
-        upload_folder = os.path.join(
-            BASE_DIR,
-            "uploads"
-        )
+        file = request.files["image"]
 
-        if not os.path.exists(upload_folder):
+        if file.filename == "":
+            return jsonify({
+                "text": "No selected image"
+            })
 
-            os.makedirs(upload_folder)
+        filename = secure_filename(file.filename)
 
-        image_path = os.path.join(
-            upload_folder,
-            image.filename
-        )
+        filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
 
-        image.save(image_path)
+        file.save(filepath)
 
-        img = Image.open(image_path)
+        image = Image.open(filepath)
 
-        extracted_text = pytesseract.image_to_string(img)
+        extracted_text = pytesseract.image_to_string(image)
 
         return jsonify({
             "text": extracted_text
@@ -313,130 +234,9 @@ def ocr():
             "text": f"OCR Error: {str(e)}"
         })
 
-# =====================================================
-# VOICE RECOGNITION
-# =====================================================
-
-@app.route("/voice", methods=["POST"])
-def voice():
-
-    try:
-
-        recognizer = sr.Recognizer()
-
-        audio_file = request.files["audio"]
-
-        upload_folder = os.path.join(
-            BASE_DIR,
-            "uploads"
-        )
-
-        if not os.path.exists(upload_folder):
-
-            os.makedirs(upload_folder)
-
-        audio_path = os.path.join(
-            upload_folder,
-            audio_file.filename
-        )
-
-        audio_file.save(audio_path)
-
-        with sr.AudioFile(audio_path) as source:
-
-            audio = recognizer.record(source)
-
-        text = recognizer.recognize_google(audio)
-
-        return jsonify({
-            "text": text
-        })
-
-    except Exception as e:
-
-        return jsonify({
-            "text": f"Voice Error: {str(e)}"
-        })
-
-# =====================================================
-# GPS LOCATION DETECTION
-# =====================================================
-
-@app.route("/location", methods=["POST"])
-def location():
-
-    data = request.json
-
-    latitude = data.get("latitude")
-    longitude = data.get("longitude")
-
-    try:
-
-        url = (
-            f"https://nominatim.openstreetmap.org/reverse"
-            f"?format=json&lat={latitude}&lon={longitude}"
-        )
-
-        headers = {
-            "User-Agent": "DriveLegalAI"
-        }
-
-        response = requests.get(
-            url,
-            headers=headers
-        )
-
-        location_data = response.json()
-
-        address = location_data.get(
-            "address",
-            {}
-        )
-
-        city = (
-            address.get("city")
-            or address.get("town")
-            or address.get("village")
-            or "Unknown City"
-        )
-
-        state = address.get(
-            "state",
-            "Unknown State"
-        )
-
-        country = address.get(
-            "country",
-            "Unknown Country"
-        )
-
-        return jsonify({
-            "city": city,
-            "state": state,
-            "country": country
-        })
-
-    except Exception as e:
-
-        return jsonify({
-            "city": "Unknown",
-            "state": "Unknown",
-            "country": "Unknown",
-            "error": str(e)
-        })
-
-# =====================================================
-# TEST ROUTE
-# =====================================================
-
-@app.route("/test")
-def test():
-
-    return "DriveLegal AI Running Successfully ✅"
-
-# =====================================================
+# =========================================================
 # RUN APP
-# =====================================================
+# =========================================================
 
 if __name__ == "__main__":
 
