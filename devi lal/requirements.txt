@@ -1,0 +1,10 @@
+Flask
+flask-cors
+google-generativeai
+pytesseract
+Pillow
+SpeechRecognition
+rapidfuzz
+scikit-learn
+geopy
+gunicorn

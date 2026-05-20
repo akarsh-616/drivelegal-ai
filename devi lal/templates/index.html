@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0">
+
+    <title>DriveLegal AI</title>
+
+    <link rel="stylesheet"
+        href="/static/style.css">
+
+</head>
+
+<body>
+
+    <div class="container">
+
+        <h1>🚗 DriveLegal AI</h1>
+
+        <!-- ================================================= -->
+        <!-- GPS LOCATION -->
+        <!-- ================================================= -->
+
+        <div class="location-section">
+
+            <button onclick="detectLocation()">
+                📍 Detect Location
+            </button>
+
+            <p>
+                <b>Latitude:</b>
+                <span id="latitude">-</span>
+            </p>
+
+            <p>
+                <b>Longitude:</b>
+                <span id="longitude">-</span>
+            </p>
+
+            <p>
+                <b>City:</b>
+                <span id="city">-</span>
+            </p>
+
+            <p>
+                <b>State:</b>
+                <span id="state">-</span>
+            </p>
+
+            <p>
+                <b>Country:</b>
+                <span id="country">-</span>
+            </p>
+
+        </div>
+
+        <!-- ================================================= -->
+        <!-- CHATBOX -->
+        <!-- ================================================= -->
+
+        <div id="chat-box" class="chat-box">
+
+            <div class="bot-msg">
+                <b>DriveLegal AI:</b><br>
+                Hello 👋<br>
+                Ask me about traffic laws,
+                fines, GPS, challans, etc.
+            </div>
+
+        </div>
+
+        <!-- ================================================= -->
+        <!-- CHAT INPUT -->
+        <!-- ================================================= -->
+
+        <div class="input-section">
+
+            <input
+                type="text"
+                id="message"
+                placeholder="Type your message...">
+
+            <button onclick="sendMessage()">
+                Send
+            </button>
+
+            <button onclick="startVoice()">
+                🎤 Voice
+            </button>
+
+        </div>
+
+        <!-- ================================================= -->
+        <!-- OCR SECTION -->
+        <!-- ================================================= -->
+
+        <div class="ocr-section">
+
+            <h2>📄 OCR Challan Scanner</h2>
+
+            <input
+                type="file"
+                id="imageInput">
+
+            <button onclick="uploadImage()">
+                Upload Image
+            </button>
+
+            <div id="ocr-result"></div>
+
+        </div>
+
+    </div>
+
+    <!-- ================================================= -->
+    <!-- JAVASCRIPT -->
+    <!-- ================================================= -->
+
+    <script src="/static/script.js"></script>
+
+</body>
+</html>

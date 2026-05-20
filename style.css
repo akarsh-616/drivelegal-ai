@@ -1,0 +1,177 @@
+:root {
+    --bg-dark: #080808;
+    --crimson: #8b0000;
+    --crimson-glow: rgba(139, 0, 0, 0.4);
+    --text-white: #f5f5f5;
+    --glass-white: rgba(255, 255, 255, 0.05);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    cursor: default;
+}
+
+body {
+    background-color: var(--bg-dark);
+    color: var(--text-white);
+    font-family: 'Georgia', serif;
+    overflow-x: hidden;
+}
+
+/* --- NAVIGATION --- */
+.navbar {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    padding: 30px 60px;
+    display: flex;
+    justify-content: space-between;
+    z-index: 1000;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
+}
+
+.nav-logo {
+    letter-spacing: 4px;
+    font-weight: 900;
+    font-size: 0.9rem;
+}
+
+.nav-links {
+    display: flex;
+    gap: 20px;
+    list-style: none;
+}
+
+.nav-links a {
+    position: relative;
+    color: var(--text-white);
+    text-decoration: none;
+    padding: 10px 20px;
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    transition: 0.3s;
+}
+
+/* THE SQUIRCULAR POP-UP */
+.nav-links a::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: var(--glass-white);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 35%; /* Squircle */
+    transform: translate(-50%, -50%);
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    z-index: -1;
+    opacity: 0;
+}
+
+.nav-links a:hover::after, .nav-links a.active::after {
+    width: 100%;
+    height: 100%;
+    opacity: 1;
+}
+
+/* --- HERO & ZOOM LOGIC --- */
+.hero-section {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+    overflow: hidden; /* Clips the zoom from bleeding into About */
+}
+
+.homepage-container {
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.subject-layers {
+    position: relative;
+    height: 100%;
+    width: 100%;
+}
+
+.suit-hitbox, .face-hitbox {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    transition: transform 0.8s cubic-bezier(0.2, 1, 0.3, 1);
+}
+
+.suit-img, .face-img {
+    height: 100vh;
+    width: auto;
+}
+
+/* Face specific isolation */
+.face-hitbox {
+    top: 15%; /* Adjust based on image head height */
+    width: 300px;
+    height: 350px;
+    overflow: hidden;
+    z-index: 10;
+}
+
+.face-img {
+    margin-top: -15vh; /* Aligns face inside hitbox */
+}
+
+/* HOVER TRIGGERS */
+.suit-hitbox:hover {
+    transform: translateX(-50%) scale(1.05); /* Suit Zoom */
+}
+
+.face-hitbox:hover {
+    transform: translateX(-50%) scale(1.15); /* Face Zoom */
+    cursor: crosshair;
+}
+
+/* --- TYPOGRAPHY --- */
+.overlay-content {
+    position: absolute;
+    z-index: 20;
+    text-align: center;
+    pointer-events: none;
+}
+
+.main-title {
+    font-size: clamp(3rem, 8vw, 6rem);
+    line-height: 0.9;
+    text-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+
+.squircle-box {
+    display: inline-block;
+    width: 15px;
+    height: 15px;
+    background: white;
+    border-radius: 30%;
+    margin-left: 10px;
+}
+
+/* --- CONTENT SECTIONS --- */
+.content-section {
+    padding: 120px 0;
+    background: var(--bg-dark);
+    border-top: 1px solid #1a1a1a;
+    text-align: center;
+}
+
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+h2 { font-size: 2.5rem; margin-bottom: 2rem; letter-spacing: 5px; text-transform: uppercase; }
+p { font-size: 1.2rem; color: #888; line-height: 1.6; }
+
+.footer { background: #000; padding: 60px 0; }
