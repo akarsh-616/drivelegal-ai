@@ -8,3 +8,5 @@ rapidfuzz
 scikit-learn
 geopy
 gunicorn
+numpy
+googletrans==4.0.0rc1
