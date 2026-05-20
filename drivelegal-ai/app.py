@@ -7,15 +7,9 @@ from werkzeug.utils import secure_filename
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-# =========================================================
-# FLASK APP
-# =========================================================
+#flask app
 
 app = Flask(__name__)
-
-# =========================================================
-# UPLOAD FOLDER
-# =========================================================
 
 UPLOAD_FOLDER = "uploads"
 
@@ -24,15 +18,11 @@ if not os.path.exists(UPLOAD_FOLDER):
 
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
-# =========================================================
-# TESSERACT PATH
-# =========================================================
+#tesseract path
 
 pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
-# =========================================================
-# LEGAL DATASET
-# =========================================================
+#legal questions
 
 legal_questions = [
     "what is fir",
@@ -84,17 +74,13 @@ legal_answers = [
     "Domestic violence includes physical, emotional, verbal and financial abuse."
 ]
 
-# =========================================================
-# NLP MODEL
-# =========================================================
+#nlp model
 
 vectorizer = TfidfVectorizer()
 
 X = vectorizer.fit_transform(legal_questions)
 
-# =========================================================
-# STATES & CITIES
-# =========================================================
+#location detils
 
 states = [
     "uttar pradesh",
@@ -123,17 +109,13 @@ cities = [
     "delhi"
 ]
 
-# =========================================================
-# HOME PAGE
-# =========================================================
+#home page details
 
 @app.route("/")
 def home():
     return render_template("index.html")
 
-# =========================================================
-# CHATBOT ROUTE
-# =========================================================
+#setting chatbot route
 
 @app.route("/chat", methods=["POST"])
 def chat():
@@ -144,15 +126,11 @@ def chat():
 
         user_message = data.get("message", "").lower()
 
-        # =====================================================
-        # REMOVE EMOJIS
-        # =====================================================
+        
 
         user_message = re.sub(r'[^\w\s]', '', user_message)
 
-        # =====================================================
-        # NLP RESPONSE
-        # =====================================================
+#nlp response
 
         user_vector = vectorizer.transform([user_message])
 
@@ -162,9 +140,7 @@ def chat():
 
         response = legal_answers[best_match]
 
-        # =====================================================
-        # LOCATION DETECTION
-        # =====================================================
+        #to detect location
 
         detected_state = None
         detected_city = None
@@ -177,9 +153,7 @@ def chat():
             if city in user_message:
                 detected_city = city.title()
 
-        # =====================================================
-        # FINAL RESPONSE
-        # =====================================================
+        #final response
 
         return jsonify({
             "reply": response,
@@ -192,10 +166,7 @@ def chat():
         return jsonify({
             "reply": f"Error: {str(e)}"
         })
-
-# =========================================================
-# OCR ROUTE
-# =========================================================
+#ocr challan details and route
 
 @app.route("/ocr", methods=["POST"])
 def ocr():
@@ -233,10 +204,7 @@ def ocr():
         return jsonify({
             "text": f"OCR Error: {str(e)}"
         })
-
-# =========================================================
-# RUN APP
-# =========================================================
+#app details 
 
 if __name__ == "__main__":
 
